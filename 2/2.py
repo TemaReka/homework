@@ -12,7 +12,7 @@ from matplotlib import pyplot as plt
 
 "Процесс проверки наличия файла и его загрузки, в также присвоение значений моего варианта в список a"
 url = 'https://jenyay.net/uploads/Student/Modelling/task_02.csv'
-v = 7
+variant = 7
 
 # check dir 'result'
 os.mkdir('result') if not os.path.isdir('result') else print('Уже есть такая директрория')
@@ -23,7 +23,7 @@ if not os.path.exists('./result/test.csv'):
 with open('./result/test.csv', 'r', encoding='utf-8') as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     lines = list(reader)
-    arr = lines[v]
+    arr = lines[variant]
 
 "Присвоение значений диаметру сферы, а также минимальной и максимальной частоте соответсвенно"
 D = float(arr[1])
@@ -63,17 +63,12 @@ counter = 0
 # Создаем корневой элемент xml документа с атрибутом version и encoding
 root = ET.Element("data")
 
-# Создаем дочерние элементы frequencydata, lambdadata и rcsdata
-frequencydata = ET.SubElement(root, "frequencydata")
-lambdadata = ET.SubElement(root, "lambdadata")
-rcsdata = ET.SubElement(root, "rcsdata")
-
-
 
 for f, lambda1, rcs in zip(f_arange, wavelength_arange, rcs_arange):
-    ET.SubElement(frequencydata, "f").text = str(f) + ' Гц'
-    ET.SubElement(lambdadata, "lambda").text = str(lambda1) + ' м'
-    ET.SubElement(rcsdata, "rcs").text = str(rcs) + ' м^2'
+    row = ET.SubElement(root, "row")
+    ET.SubElement(row, "freq").text = str(f) + ' Гц'
+    ET.SubElement(row, "lambda").text = str(lambda1) + ' м'
+    ET.SubElement(row, "rcs").text = str(rcs) + ' м^2'
 
 tree = ET.ElementTree(root)
 
