@@ -13,10 +13,14 @@ from matplotlib import pyplot as plt
 "Процесс проверки наличия файла и его загрузки, в также присвоение значений моего варианта в список a"
 url = 'https://jenyay.net/uploads/Student/Modelling/task_02.csv'
 v = 7
-if (os.path.exists('2/result/test.csv')==0):
-    wget.download(url, r'2/result/test.csv')
 
-with open('2/result/test.csv', 'r', encoding='utf-8') as csvfile:
+# check dir 'result'
+os.mkdir('result') if not os.path.isdir('result') else print('Уже есть такая директрория')
+
+if not os.path.exists('./result/test.csv'):
+    wget.download(url, './result/test.csv')
+
+with open('./result/test.csv', 'r', encoding='utf-8') as csvfile:
     reader = csv.reader(csvfile, delimiter=',')
     lines = list(reader)
     arr = lines[v]
@@ -28,7 +32,7 @@ fmax = float(arr[3])
 
 # задаем константы для рассчетов
 n_end = 10
-dx = 100000 
+dx = 100000
 r = D / 2
 f_arange = arange(fmin, fmax, dx)
 wavelength_arange = constants.c / f_arange
@@ -53,10 +57,6 @@ def f2(n, x):
 # ЭПР
 rcs_arange = (wavelength_arange ** 2) / numpy.pi * (abs(sum([((-1) ** n) * (n+0.5) * (f3(n, k_arange * r) - f2(n, k_arange * r)) for n in range(1, n_end)], axis=0)) ** 2)
 
-if not os.path.isdir('2/result'):
-    os.mkdir('2/result')
-else:
-    print('Уже есть такая директрория')
 
 counter = 0
 
@@ -82,7 +82,7 @@ xml_string = ET.tostring(root, encoding="utf-8").decode("utf-8")
 dom = xml.dom.minidom.parseString(xml_string)
 formatted_xml = dom.toprettyxml(indent="  ")  # два пробела для отступ
 
-with open('2/result/data.xml', 'w', encoding='utf-8') as file:
+with open('./result/data.xml', 'w', encoding='utf-8') as file:
 
     file.write(formatted_xml)
 
@@ -92,4 +92,3 @@ plt.ylabel(r"$\sigma, м^2$")
 plt.plot(f_arange, rcs_arange)
 plt.grid()
 plt.show()
-
