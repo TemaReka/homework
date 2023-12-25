@@ -1,18 +1,21 @@
-import pylab
-import numpy as np
-import numpy.typing as npt
+# -*- coding: utf-8 -*-
 from abc import ABCMeta, abstractmethod
 from typing import List, Optional
+import matplotlib.pyplot as plt
+import numpy as np
+import numpy.typing as npt
+
 
 class Probe:
     '''
-    Класс для хранения временного сигнала в пробнике.
+    Класс для хранения временного сигнала в датчике.
     '''
 
     def __init__(self, position: int, maxTime: int):
         '''
-        position - положение пробника (номер ячейки).
-        maxTime - максимально количество временных шагов для хранения в пробнике.
+        position - положение датчика (номер ячейки).
+        maxTime - максимальное количество временных
+            шагов для хранения в датчике.
         '''
         self.position = position
 
@@ -25,11 +28,12 @@ class Probe:
 
     def addData(self, E: npt.NDArray[float], H: npt.NDArray[float]):
         '''
-        Добавить данные по полям E и H в пробник.
+        Добавить данные по полям E и H в датчик.
         '''
         self.E[self._time] = E[self.position]
         self.H[self._time] = H[self.position]
         self._time += 1
+
 
 class AnimateFieldDisplay:
     '''
@@ -37,21 +41,19 @@ class AnimateFieldDisplay:
     '''
 
     def __init__(self,
-                 dx: float,
-                 dt: float,
                  maxXSize: int,
                  minYSize: float, maxYSize: float,
                  yLabel: str,
-                 title: Optional[str] = None
-                 ):
+                 dx: float,
+                 dt: float,
+                 title: Optional[str] = None):
         '''
-        dx - дискрет по простарнству, м
-        dt - дискрет по времени, сек
         maxXSize - размер области моделирования в отсчетах.
         minYSize, maxYSize - интервал отображения графика по оси Y.
         yLabel - метка для оси Y
         '''
         self.maxXSize = maxXSize
+        print(self.maxXSize)
         self.minYSize = minYSize
         self.maxYSize = maxYSize
         self._xList = None
@@ -64,6 +66,11 @@ class AnimateFieldDisplay:
         self._dt = dt
         self._title = title
 
+        '''
+        dx - дискрет по пространству, м
+        dt - дискрет по времени, с (они используются позже в мэйн файле, где задаются все данные, а также ниже)
+        '''
+
     def activate(self):
         '''
         Инициализировать окно с анимацией
@@ -71,11 +78,10 @@ class AnimateFieldDisplay:
         self._xList = np.arange(self.maxXSize) * self._dx
 
         # Включить интерактивный режим для анимации
-        pylab.ion()
+        plt.ion()
 
         # Создание окна для графика
-        self._fig, self._ax = pylab.subplots(
-            figsize=(10, 6.5))
+        self._fig, self._ax = plt.subplots(figsize=(10, 6.5))
 
         if self._title is not None:
             self._fig.suptitle(self._title)
@@ -96,12 +102,12 @@ class AnimateFieldDisplay:
 
     def drawProbes(self, probesPos: List[int]):
         '''
-        Нарисовать пробники.
+        Нарисовать датчики.
 
-        probesPos - список координат пробников для регистрации временных
+        probesPos - список координат датчиков для регистрации временных
             сигналов (в отсчетах).
         '''
-        # Отобразить положение пробника
+        # Отобразить положение датчиков
         self._ax.plot(np.array(probesPos) * self._dx,
                       [0] * len(probesPos), self._probeStyle)
 
@@ -119,9 +125,8 @@ class AnimateFieldDisplay:
 
         sourcesPos - список координат источников (в отсчетах).
         '''
-        # Отобразить положение пробника
-        self._ax.plot(np.array(sourcesPos) * self._dx,
-                      [0] * len(sourcesPos), self._sourceStyle)
+        # Отобразить положение источников
+        self._ax.plot(np.array(sourcesPos) * self._dx, [0] * len(sourcesPos), self._sourceStyle)
 
     def drawBoundary(self, position: int):
         '''
@@ -137,17 +142,45 @@ class AnimateFieldDisplay:
         '''
         Остановить анимацию
         '''
-        pylab.ioff()
+        plt.ioff()
 
     def updateData(self, data: npt.NDArray[float], timeCount: int):
         '''
         Обновить данные с распределением поля в пространстве
         '''
         self._line.set_ydata(data)
-        time_str = '{:.5f}'.format(timeCount * self._dt * 1e9)
-        self._ax.set_title(f'{time_str} нс')
+        self._ax.set_title(str(timeCount * self._dt * 1e9))
         self._fig.canvas.draw()
         self._fig.canvas.flush_events()
+
+
+def showProbeSignals(probes: List[Probe], dx: float, dt: float, minYSize: float, maxYSize: float):
+    '''
+    Показать графики сигналов, зарегистрированых в датчиках.
+
+    probes - список экземпляров класса Probe.
+    minYSize, maxYSize - интервал отображения графика по оси Y.
+    '''
+
+    # Создание окна с графиков
+    fig, ax = plt.subplots()
+
+    # Настройка внешнего вида графиков
+    ax.set_xlim(0, len(probes[0].E) * dt * 1e9)
+    ax.set_ylim(minYSize, maxYSize)
+    ax.set_xlabel('t, нс')
+    ax.set_ylabel('Ez, В/м')
+    ax.grid()
+
+    time_list = np.arange(len(probes[0].E)) * dt * 1e9
+
+    # Вывод сигналов в окно
+    for probe in probes:
+        ax.plot(time_list, probe.E)
+
+    # Показать окно с графиками
+    plt.show()
+
 
 class Source1D(metaclass=ABCMeta):
     '''
@@ -155,19 +188,21 @@ class Source1D(metaclass=ABCMeta):
     '''
 
     @abstractmethod
-    def getE(self, time):
+    def getFieldE(self, position, time):
         '''
         Метод должен возвращать значение поля источника в момент времени time
         '''
         pass
 
-    def getH(self, time):
+    def getFieldH(self, time):
         return 0.0
+
 
 class SourcePlaneWave(metaclass=ABCMeta):
     @abstractmethod
-    def getE(self, position, time):
+    def getFieldE(self, position, time):
         pass
+
 
 class Source(Source1D):
     def __init__(self, source: SourcePlaneWave,
@@ -182,11 +217,11 @@ class Source(Source1D):
         self.mu = mu
         self.W0 = 120.0 * np.pi
 
-    def getH(self, time):
+    def getFieldH(self, time):
         return -(self.Sc / (self.W0 * self.mu)) * (
-                    self.source.getE(self.sourcePos, time) - self.source.getE(self.sourcePos - 1, time))
+                self.source.getFieldE(self.sourcePos, time) - self.source.getFieldE(self.sourcePos - 1, time))
 
-    def getE(self, time):
+    def getFieldE(self, time):
         return (self.Sc / np.sqrt(self.eps * self.mu)) * (
-                    self.source.getE(self.sourcePos - 0.5, time + 0.5) + self.source.getE(self.sourcePos + 0.5,
-                                                                                          time + 0.5))
+                self.source.getFieldE(self.sourcePos - 0.5, time + 0.5) + self.source.getFieldE(self.sourcePos + 0.5,
+                                                                                                time + 0.5))

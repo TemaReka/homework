@@ -1,12 +1,11 @@
+# -*- coding: utf-8 -*-
 import math
 import numpy as np
-from Animation import Source1D
+from sources import Source1D
 
-
-
-class Gaussian(Source1D):
+class GaussianDiff(Source1D):
     '''
-    Источник, создающий гауссов импульс
+    Источник, создающий дифференцированный гауссов импульс
     '''
 
     def __init__(self, magnitude, dg, wg):
@@ -19,8 +18,10 @@ class Gaussian(Source1D):
         self.dg = dg
         self.wg = wg
 
-    def getE(self, v, time):
-        return self.magnitude * np.exp(-((time - self.dg) / self.wg) ** 2)
+    def getFieldE(self, position, time):
+        e = (time - self.dg) / self.wg
+        return -2 * self.magnitude * e * np.exp(-(e ** 2))
+
 
 class LayerContinuous:
     def __init__(self,
@@ -35,6 +36,7 @@ class LayerContinuous:
         self.mu = mu
         self.sigma = sigma
 
+
 class LayerDiscrete:
     def __init__(self,
                  xmin: int,
@@ -48,12 +50,14 @@ class LayerDiscrete:
         self.mu = mu
         self.sigma = sigma
 
+
 class Sampler:
     def __init__(self, discrete: float):
         self.discrete = discrete
 
     def sample(self, x: float) -> int:
         return math.floor(x / self.discrete + 0.5)
+
 
 def sampleLayer(layer_cont: LayerContinuous, sampler: Sampler) -> LayerDiscrete:
     start_discrete = sampler.sample(layer_cont.xmin)
@@ -62,4 +66,3 @@ def sampleLayer(layer_cont: LayerContinuous, sampler: Sampler) -> LayerDiscrete:
                     else None)
     return LayerDiscrete(start_discrete, end_discrete,
                          layer_cont.eps, layer_cont.mu, layer_cont.sigma)
-

@@ -1,11 +1,12 @@
-from tools import *
-
-"* импорт с получением доступа ко всем именам"
-from Animation import Probe, Source, AnimateFieldDisplay
+# -*- coding: utf-8 -*
+import numpy as np
 import numpy.typing as npt
 from typing import List
 import matplotlib.pyplot as plt
-import scipy.constants as sycon
+from tools import *
+from sources import Probe, Source, AnimateFieldDisplay, showProbeSignals
+
+'''* импорт с получением доступа ко всем именам'''
 
 
 def fillMedium(layer: LayerDiscrete,
@@ -22,48 +23,23 @@ def fillMedium(layer: LayerDiscrete,
         sigma[layer.xmin:] = layer.sigma
 
 
-def showProbeSignals(probes: List[Probe], minYSize: float, maxYSize: float):
-    '''
-    Показать графики сигналов, зарегистрированых в датчиках.
-
-    probes - список экземпляров класса Probe.
-    minYSize, maxYSize - интервал отображения графика по оси Y.
-    '''
-    # Создание окна с графиков
-    fig, ax = plt.subplots()
-
-    # Настройка внешнего вида графиков
-    ax.set_xlim(0, len(probes[0].E) * dt * 1e9)
-    ax.set_ylim(minYSize, maxYSize)
-    ax.set_xlabel('t, нс')
-    ax.set_ylabel('Ez, В/м')
-    ax.grid()
-    time_list = np.arange(len(probes[0].E)) * dt * 1e9
-    # Вывод сигналов в окно
-    for probe in probes:
-        ax.plot(time_list, probe.E)
-
-    # Показать окно с графиками
-    plt.show()
-
-
 if __name__ == '__main__':
     # Используемые константы
     # Волновое сопротивление свободного пространства
     W0 = 120.0 * np.pi
 
     # Скорость света в вакууме
-    c = sycon.c
+    c = 299792458.0
 
-    # Диэлектрическая постоянная
+    # Электрическая постоянная
     eps0 = 8.854187817e-12
 
     # Параметры моделирования
     # Частота сигнала, Гц
-    f_Hz = 0.5e9
+    f_Hz = 1.5e9
 
     # Дискрет по пространству в м
-    dx = 2e-3
+    dx = 4e-3
 
     wavelength = c / f_Hz
     Nl = wavelength / dx
@@ -75,20 +51,21 @@ if __name__ == '__main__':
     maxSize_m = 3.5
 
     # Время расчета в секундах
-    maxTime_s = 47e-9
+    maxTime_s = 20e-9
 
     # Положение источника в м
-    sourcePos_m = 1.5
+    sourcePos_m = 2
 
     # Координаты датчиков для регистрации поля в м
-    probesPos_m = [0.5]
+    probesPos_m = [2]
 
     # Параметры слоев
-    layers_cont = [LayerContinuous(xmin=0, eps=7.0, sigma=0.0)]
+    layers_cont = [LayerContinuous(0, eps=8.0, sigma=0.0)]
 
     # Скорость обновления графика поля
     speed_refresh = 15
 
+    # Переход к дискретным отсчетам
     # Дискрет по времени
     dt = dx * Sc / c
 
@@ -121,13 +98,13 @@ if __name__ == '__main__':
     probes_m_str = ', '.join(['{:.6f}'.format(pos) for pos in probesPos_m])
     print(f'Дискрет по пространству: {dx} м')
     print(f'Дискрет по времени: {dt * 1e9} нс')
-    print(f'Координата пробника [м]: {probes_m_str}')
+    print(f'Координаты пробника [м]: {probes_m_str}')
     print()
     print(f'Размер области моделирования: {maxSize} отсч.')
     print(f'Время расчета: {maxTime} отсч.')
     print(f'Координата источника: {sourcePos} отсч.')
     probes_str = ', '.join(['{}'.format(pos) for pos in probesPos])
-    print(f'Координата пробника [отсч.]: {probes_str}')
+    print(f'Координаты пробника [отсч.]: {probes_str}')
 
     # Параметры среды
     # Диэлектрическая проницаемость
@@ -149,22 +126,18 @@ if __name__ == '__main__':
 
     # Расчет коэффициентов для граничных условий
     # Sc' для левой границы
-    Sc1Left = Sc / np.sqrt(mu[0] * eps[0])
+    tempLeft = Sc / np.sqrt(mu[0] * eps[0])
+    koeffABCLeft = (tempLeft - 1) / (tempLeft + 1)
 
-    k1Left = -1 / (1 / Sc1Left + 2 + Sc1Left)
-    k2Left = 1 / Sc1Left - 2 + Sc1Left
-    k3Left = 2 * (Sc1Left - 1 / Sc1Left)
-    k4Left = 4 * (1 / Sc1Left + Sc1Left)
-
-    # Ez[0: 2] в предыдущий момент времени (q)
+    # Ez[-3: -1] в предыдущий момент времени (q)
     oldEzLeft1 = np.zeros(3)
 
-    # Ez[0: 2] в пред-предыдущий момент времени (q - 1)
+    # Ez[-3: -1] в пред-предыдущий момент времени (q - 1)
     oldEzLeft2 = np.zeros(3)
 
     # Источник
     magnitude = 1.0
-    signal = Gaussian(1, 300, 40)
+    signal = GaussianDiff(1, 150, 50)
 
     source = Source(signal, 0.0, Sc, eps[sourcePos], mu[sourcePos])
 
@@ -179,10 +152,7 @@ if __name__ == '__main__':
 
     # Создание экземпляра класса для отображения
     # распределения поля в пространстве
-    display = AnimateFieldDisplay(dx, dt,
-                                  maxSize,
-                                  display_ymin, display_ymax,
-                                  display_ylabel)
+    display = AnimateFieldDisplay(maxSize, display_ymin, display_ymax, display_ylabel, dx, dt)
 
     display.activate()
     display.drawSources([sourcePos])
@@ -196,25 +166,26 @@ if __name__ == '__main__':
         # Расчет компоненты поля H
         Hy = Hy + (Ez[1:] - Ez[:-1]) * Sc / (W0 * mu)
 
+        # Граничное условие PMC (справа)
+        Hy[-1] = 0
+
         # Источник возбуждения
-        Hy[sourcePos - 1] += source.getH(t)
-
-        # Ez(2) в предыдущий момент времени
-        oldEzLeft = 0
-
-        # Расчет коэффициентов для граничных условий
-        tempLeft = Sc / math.sqrt(mu[1] * eps[1])
-        koeffABCLeft = (tempLeft - 1) / (tempLeft + 1)
-
+        Hy[sourcePos - 1] += source.getFieldH(t)
+        # Ez[1] в предыдущий момент времени
+        oldEzLeft = Ez[1]
+        # Ez[-2] в предыдущий момент времени
+        # oldEzRight = Ez[-2]
         # Расчет компоненты поля E
         Ez[1:-1] = ceze[1: -1] * Ez[1: -1] + cezh[1: -1] * (Hy[1:] - Hy[: -1])
-
         # Граничные условия ABC первой степени (слева)
-        Ez[1] = oldEzLeft + koeffABCLeft * (Ez[2] - Ez[1])
-        oldEzLeft = Ez[2]
+        Ez[0] = oldEzLeft + koeffABCLeft * (Ez[1] - Ez[0])
+        oldEzLeft = Ez[1]
+
+        oldEzLeft2[:] = oldEzLeft1[:]
+        oldEzLeft1[:] = Ez[0: 3]
 
         # Источник возбуждения
-        Ez[sourcePos] += source.getE(t)
+        Ez[sourcePos] += source.getFieldE(t)
 
         # Регистрация поля в датчиках
         for probe in probes:
@@ -223,8 +194,9 @@ if __name__ == '__main__':
         if t % speed_refresh == 0:
             display.updateData(display_field, t)
             display.stop()
+
     # Отображение сигнала, сохраненного в пробнике
-    showProbeSignals(probes, -2.1, 2.1)
+    showProbeSignals(probes, dx, dt, -2.1, 2.1)
 
     # Построение спектра
     plt.figure()
