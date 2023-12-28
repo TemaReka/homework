@@ -54,7 +54,7 @@ if __name__ == '__main__':
     maxTime_s = 20e-9
 
     # Положение источника в м
-    sourcePos_m = 2
+    sourcePos_m = maxSize_m/2
 
     # Координаты датчиков для регистрации поля в м
     probesPos_m = [2]
